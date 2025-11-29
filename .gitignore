@@ -7,7 +7,7 @@ npm-debug.log
 .DS_Store
 dist/
 build/
-Dockerfile*
-docker-compose.yml
+
+
 .idea/
 .vscode/

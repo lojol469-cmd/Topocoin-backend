@@ -1,0 +1,14 @@
+# docker-compose.yml
+version: '3.9'
+services:
+  topocoin:
+    image: topocoin-backend               # ton image déjà construite
+    container_name: topocoin
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env                                 # ← Il lit AUTOMATIQUEMENT ton .env !
+    restart: unless-stopped
+    # Optionnel : volumes si tu veux persister des logs ou autre
+    # volumes:
+    #   - ./logs:/app/logs
