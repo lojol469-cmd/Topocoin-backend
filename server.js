@@ -74,6 +74,8 @@ const UserSchema = new mongoose.Schema({
     platform: String,
     browser: String,
     biometricEnabled: { type: Boolean, default: false },
+    otpCode: String,
+    otpExpires: Date,
     createdAt: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', UserSchema);
@@ -148,8 +150,8 @@ app.get('/ip', (req, res) => {
     res.json({
         localIp: `http://${LOCAL_IP}:5000`,
         localWs: `ws://${LOCAL_IP}:5000`,
-        prodUrl: "https://ton-app.onrender.com",
-        prodWs: "wss://ton-app.onrender.com"
+        prodUrl: "https://topocoin-backend.onrender.com",
+        prodWs: "wss://topocoin-backend.onrender.com"
     });
 });
 
@@ -188,6 +190,101 @@ app.post('/register', async (req, res) => {
     }
 });
 
+app.post('/login', async (req, res) => {
+    logWithIp(req, `Tentative de connexion`);
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Données manquantes' });
+
+    try {
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) return res.status(401).json({ error: 'Utilisateur non trouvé' });
+
+        const isValid = await bcrypt.compare(password, user.passwordHash);
+        if (!isValid) return res.status(401).json({ error: 'Mot de passe incorrect' });
+
+        const token = generateToken(user);
+        logWithIp(req, `Connexion réussie → ${email}`);
+        res.json({ token, publicKey: user.solanaPublicKey });
+    } catch (err) {
+        logWithIp(req, `Échec connexion`);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.post('/biometric-login', async (req, res) => {
+    logWithIp(req, `Tentative connexion biométrique`);
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email manquant' });
+
+    try {
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) return res.status(401).json({ error: 'Utilisateur non trouvé' });
+
+        // For biometric, we assume the app has verified the biometric, so just return token
+        const token = generateToken(user);
+        logWithIp(req, `Connexion biométrique réussie → ${email}`);
+        res.json({ token, publicKey: user.solanaPublicKey });
+    } catch (err) {
+        logWithIp(req, `Échec connexion biométrique`);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.post('/send-otp', async (req, res) => {
+    logWithIp(req, `Demande OTP`);
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email manquant' });
+
+    try {
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit code
+        user.otpCode = otp;
+        user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+        await user.save();
+
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Topocoin — Code OTP',
+            html: `<h3>Votre code OTP :</h3><p style="background:#f0f0f0;padding:15px;font-family:monospace;font-size:24px;">${otp}</p><p>Expire dans 10 minutes.</p>`
+        });
+
+        logWithIp(req, `OTP envoyé → ${email}`);
+        res.json({ message: 'OTP envoyé par email' });
+    } catch (err) {
+        logWithIp(req, `Échec envoi OTP`);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.post('/verify-otp', async (req, res) => {
+    logWithIp(req, `Vérification OTP`);
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ error: 'Données manquantes' });
+
+    try {
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+        if (user.otpCode !== otp || user.otpExpires < new Date()) {
+            return res.status(401).json({ error: 'OTP invalide ou expiré' });
+        }
+
+        user.otpCode = undefined;
+        user.otpExpires = undefined;
+        await user.save();
+
+        const token = generateToken(user);
+        logWithIp(req, `OTP vérifié → ${email}`);
+        res.json({ token, publicKey: user.solanaPublicKey });
+    } catch (err) {
+        logWithIp(req, `Échec vérification OTP`);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // ... (les autres routes restent identiques, mais tu peux ajouter logWithIp(req, "...") partout)
 
 // =========================
@@ -211,5 +308,5 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`Local  → http://${LOCAL_IP}:${PORT}`);
     console.log(`Local  → ws://${LOCAL_IP}:${PORT}`);
     console.log(`Mobile → Connecte-toi sur http://${LOCAL_IP}:5000`);
-    console.log(`Prod   → https://ton-app.onrender.com\n`);
+    console.log(`Prod   → https://topocoin-backend.onrender.com\n`);
 });

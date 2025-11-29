@@ -1,0 +1,191 @@
+Parfait ! Maintenant que ton backend Topocoin fonctionne, voici un **README style Notion** pour documenter clairement **comment fonctionne la connexion backend, les fonctionnalités, et comment l’utiliser**. Tu peux copier-coller directement dans Notion ou Markdown.
+
+---
+
+# 🪙 Topocoin Backend
+
+## 1️⃣ Introduction
+
+Ce backend est un serveur **Node.js/Express** pour gérer la crypto-monnaie **Topocoin** sur le réseau **Solana Testnet**.
+Il gère :
+
+* Gestion des utilisateurs (inscription, login)
+* Stockage des wallets Solana (public/private key)
+* Détection automatique de l’adresse IP
+* JWT pour l’authentification
+* Envoi de Topocoin (Solana)
+* Envoi d’emails via Gmail/Nodemailer
+* WebSocket pour communication en temps réel
+
+---
+
+## 2️⃣ Prérequis
+
+* Node.js ≥ 20
+* NPM
+* MongoDB Atlas (ou local)
+* Compte Gmail pour Nodemailer (email utilisateur + mot de passe d’application)
+
+---
+
+## 3️⃣ Installation
+
+1. Cloner le projet :
+
+```bash
+git clone <ton-repo-url>
+cd backend
+```
+
+2. Installer les dépendances :
+
+```bash
+npm install express mongoose dotenv body-parser jsonwebtoken nodemailer @solana/web3.js ws
+```
+
+3. Créer un fichier `.env` :
+
+```env
+PORT=5000
+
+MONGO_USER=SETRAF
+MONGO_PASSWORD=Dieu19961991??!??!
+MONGO_CLUSTER=cluster0.5tjz9v0.mongodb.net
+MONGO_DB_NAME=myDatabase2
+MONGO_URI=mongodb+srv://SETRAF:Dieu19961991%3F%3F%21%3F%3F%21@cluster0.5tjz9v0.mongodb.net/myDatabase2?retryWrites=true&w=majority&appName=Cluster0
+
+JWT_SECRET=Dieu19961991??!??!
+JWT_REFRESH_SECRET=Dieu19961991??!??!_refresh
+
+EMAIL_USER=tonemail@gmail.com
+EMAIL_PASS=motdepasse_app
+
+PUBLIC_KEY=qazghazz
+PRIVATE_KEY=264419a2-cd4e-471a-81b3-04c522669052
+```
+
+---
+
+## 4️⃣ Lancer le serveur
+
+```bash
+node server
+```
+
+Tu devrais voir :
+
+```
+🚀 Topocoin backend HTTP+WS running on port 5000
+✅ MongoDB connected
+```
+
+---
+
+## 5️⃣ Endpoints API
+
+### 🔹 Test
+
+```http
+GET /
+```
+
+* Retourne un message de fonctionnement et l’IP du client.
+
+---
+
+### 🔹 Inscription
+
+```http
+POST /register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "123456"
+}
+```
+
+* Crée un utilisateur, génère un wallet Solana Testnet et envoie un email de bienvenue.
+* Stocke l’adresse IP du client.
+
+---
+
+### 🔹 Login
+
+```http
+POST /login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "123456"
+}
+```
+
+* Retourne un token JWT + info utilisateur + dernière IP détectée.
+
+---
+
+### 🔹 Envoyer Topocoin
+
+```http
+POST /send
+Content-Type: application/json
+
+{
+  "fromPrivateKeyHex": "<clé privée hex du wallet>",
+  "toPublicKey": "<adresse publique du destinataire>",
+  "amount": 0.1
+}
+```
+
+* Transfère des Topocoin sur **Solana Testnet**.
+
+---
+
+## 6️⃣ WebSocket (Temps réel)
+
+* Connexion WebSocket : `ws://localhost:5000`
+* Chaque connexion reçoit l’IP et un message de bienvenue.
+* Messages envoyés par le client sont renvoyés en **echo**.
+
+Exemple client JS :
+
+```javascript
+const ws = new WebSocket('ws://localhost:5000');
+
+ws.onopen = () => console.log('Connecté au WS');
+ws.onmessage = (msg) => console.log('Message reçu:', msg.data);
+
+ws.send('Salut serveur !');
+```
+
+---
+
+## 7️⃣ Détection IP
+
+* Le backend détecte automatiquement l’IP du client via :
+
+```js
+const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+```
+
+* IP stockée dans MongoDB pour chaque utilisateur.
+
+---
+
+## 8️⃣ Notes importantes
+
+* Les mots de passe sont **stockés en clair pour le test**, utiliser `bcrypt` en production.
+* Clés privées Solana sont actuellement en clair : **à sécuriser pour production**.
+* WebSocket et HTTP fonctionnent en local sans HTTPS, passer en HTTPS pour un déploiement public.
+
+---
+
+💡 Ce README peut servir directement dans **Notion** pour documenter le projet, guider les développeurs et tester les connexions backend.
+
+---
+
+Si tu veux, je peux te faire **une version visuelle Notion avec schéma backend + flux de connexion + WebSocket** prête à copier-coller pour ton workspace.
+
+Veux‑tu que je fasse ça ?
